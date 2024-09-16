@@ -236,21 +236,33 @@ function unmount_music_file () {
 }
 
 function wait_for_archive_to_be_unreachable () {
-  log "Waiting for archive to be unreachable..."
+  log "Waiting for archive to be unreachable or timeout..."
+  local timeout_s=$((60 * 30))
+  local start_time=$SECONDS
+
   while true
-    do
-      if ! retry archive_is_reachable
-      then
-        log "Archive is unreachable."
-        break
-      fi
-      if [ -e /tmp/archive_is_unreachable ]
-      then
-        log "Simulating archive being unreachable."
-        rm /tmp/archive_is_unreachable
-        break
-      fi
-      sleep 1
+  do
+    if ! retry archive_is_reachable
+    then
+      log "Archive is unreachable."
+      break
+    fi
+
+    # Check if the timeout has been reached
+    if (( SECONDS - start_time >= timeout_s ))
+    then
+      log "Timeout reached (${timeout_s} seconds). Continuing loop."
+      break
+    fi
+
+    if [ -e /tmp/archive_is_unreachable ]
+    then
+      log "Simulating archive being unreachable."
+      rm /tmp/archive_is_unreachable
+      break
+    fi
+
+    sleep 1
   done
 }
 
